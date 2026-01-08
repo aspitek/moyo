@@ -6,7 +6,7 @@ services:
     container_name: rag-api
     ports:
       - "8000:8000"
-    environment:
+    env_file:
       - path: .env
     networks:
       - rag-network
