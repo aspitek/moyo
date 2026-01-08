@@ -8,11 +8,11 @@ services:
       - "8000:8000"
     environment:
       DB_USER: "postgres"
-      DB_PASSWORD: "Sellart@2026"
-      DB_HOST: "89.116.38.238"
+      DB_PASSWORD: ""
+      DB_HOST: ""
       DB_PORT: 5433
       DB_NAME: "sellart"
-      OPENAI_API_KEY: "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"
+      OPENAI_API_KEY: ""
       GEMINI_API_KEY:
       QDRANT_HOST: "localhost"
       QDRANT_PORT: 6333
