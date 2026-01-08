@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: rag-api
+    ports:
+      - "8000:8000"
+    environment:
+      DB_USER: "postgres"
+      DB_PASSWORD: ""
+      DB_HOST: ""
+      DB_PORT: 5433
+      DB_NAME: "sellart"
+      OPENAI_API_KEY: ""
+      GEMINI_API_KEY:
+      QDRANT_HOST: "localhost"
+      QDRANT_PORT: 6333
+      COLLECTION_NAME: "sellart_artworks"
+      EMBEDDING_MODEL: "text-embedding-3-small"
+      LLM_MODEL: "gpt-4o-2024-08-06"
+      EMBEDDING_DIMENSION: "1536"
+      INDEX_ON_STARTUP: "true"
+    networks:
+      - rag-network
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: /app
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - .pytest_cache/
+
+volumes:
+  postgres_data:
+
+networks:
+  rag-network:
+    driver: bridge
