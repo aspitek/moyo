@@ -20,6 +20,8 @@ services:
         LLM_MODEL: "${LLM_MODEL}"
         EMBEDDING_DIMENSION: "${EMBEDDING_DIMENSION}"
         INDEX_ON_STARTUP: "${INDEX_ON_STARTUP}"
+    env_file:
+      - .env
     container_name: rag-api
     ports:
       - "8000:8000"
