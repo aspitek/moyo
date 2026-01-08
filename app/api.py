@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     """Événements de démarrage et arrêt"""
     # Démarrage
     print("🚀 Démarrage de l'API Moyo RAG...")
-    
+    print(settings.as_dict())
     # Vérifier la connexion DB
     try:
         with get_connection() as conn:
