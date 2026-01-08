@@ -3,11 +3,26 @@ version: '3.8'
 services:
   api:
     build: .
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DB_USER= ${DB_USER}
+        DB_PASSWORD= ${DB_PASSWORD}
+        DB_HOST= ${DB_HOST}
+        DB_PORT= ${DB_PORT}
+        DB_NAME= ${DB_NAME}
+        OPENAI_API_KEY= ${OPENAI_API_KEY}
+        GEMINI_API_KEY= ${GEMINI_API_KEY}
+        QDRANT_HOST= ${QDRANT_HOST}
+        QDRANT_PORT= ${QDRANT_PORT}
+        COLLECTION_NAME= ${COLLECTION_NAME}
+        EMBEDDING_MODEL= ${EMBEDDING_MODEL}
+        LLM_MODEL= ${LLM_MODEL}
+        EMBEDDING_DIMENSION= ${EMBEDDING_DIMENSION}
+        INDEX_ON_STARTUP= ${INDEX_ON_STARTUP}
     container_name: rag-api
     ports:
       - "8000:8000"
-    env_file:
-      - path: .env
     networks:
       - rag-network
     develop:
