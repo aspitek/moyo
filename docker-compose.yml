@@ -22,6 +22,8 @@ services:
         INDEX_ON_STARTUP: "${INDEX_ON_STARTUP}"
         GOOGLE_GENAI_API_KEY: "${GOOGLE_GENAI_API_KEY}"
         
+    env_file:
+      - .env
     container_name: rag-api
     ports:
       - "8000:8000"
