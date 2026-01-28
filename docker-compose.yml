@@ -20,6 +20,8 @@ services:
         LLM_MODEL: "${LLM_MODEL}"
         EMBEDDING_DIMENSION: "${EMBEDDING_DIMENSION}"
         INDEX_ON_STARTUP: "${INDEX_ON_STARTUP}"
+        GOOGLE_GENAI_API_KEY: "${GOOGLE_GENAI_API_KEY}"
+        
     container_name: rag-api
     ports:
       - "8000:8000"

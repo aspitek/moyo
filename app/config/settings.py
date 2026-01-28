@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1536
     index_on_startup: bool = True
+
+    # Google GenAI
+    google_genai_api_key: str
     
     model_config = SettingsConfigDict(
         env_file=".env",
