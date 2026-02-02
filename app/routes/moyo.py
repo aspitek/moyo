@@ -6,9 +6,12 @@ import base64
 from google import genai
 from google.genai import types
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from typing import List
 
 from app.config.db import get_connection
 from app.services.embeddings import generate_embedding
+from app.services.llm_call import generate_llm_response
 from app.services.indexer import (
     index_new_artworks,
     reindex_all,
@@ -33,45 +36,37 @@ def search_artworks(
     emotion: Optional[str] = Query(default=None)
 ):
     """
-    Recherche sémantique dans les artworks avec filtres optionnels
+    Recherche sémantique dans les artworks avec filtres optionnels + msg global + parallélisation
     """
-    # Générer embedding de la requête
+    # 1. Recherche vectorielle (synchrone, rapide)
     query_embedding = generate_embedding(query)
-    
-    # Convertir embedding en string format PostgreSQL array
     embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
     
-    # Construire les filtres dynamiques
+    # Filtres (inchangé)
     filters = []
     params = {"limit": top_k}
-    
     if min_price is not None:
         filters.append("(metadata->>'price')::float >= :min_price")
         params["min_price"] = min_price
-    
     if max_price is not None:
         filters.append("(metadata->>'price')::float <= :max_price")
         params["max_price"] = max_price
-    
     if style:
         filters.append("metadata->>'style' ILIKE :style")
         params["style"] = f"%{style}%"
-    
     if location:
         filters.append("metadata->>'location' ILIKE :location")
         params["location"] = f"%{location}%"
-    
     if ambiance:
         filters.append("metadata->>'ambiance' ILIKE :ambiance")
         params["ambiance"] = f"%{ambiance}%"
-    
     if emotion:
         filters.append("metadata->>'emotion' ILIKE :emotion")
         params["emotion"] = f"%{emotion}%"
     
     where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
     
-    # Injecter le vector directement dans la query (pas en paramètre)
+    # DB Query
     with get_connection() as conn:
         query_sql = f"""
             SELECT 
@@ -84,33 +79,86 @@ def search_artworks(
             ORDER BY embedding <=> '{embedding_str}'::vector
             LIMIT :limit
         """
-        
         result = conn.execute(text(query_sql), params)
         
-        results = [
+        raw_results = [
             {
                 "artwork_id": str(row[0]),
                 "content": row[1][:200] + "..." if len(row[1]) > 200 else row[1],
+                "full_content": row[1],  # Garde le full pour le msg global
                 "metadata": row[2],
                 "similarity": round(float(row[3]), 4)
             }
             for row in result
         ]
+    
+    # 2. PARALLÉLISATION: Messages individuels en threads
+    def generate_individual_msg(raw_result):
+        prompt = f"""
+        Basé sur la requête: "{query}"
+        Description oeuvre: {raw_result["content"]}
         
-        return {
-            "query": query,
-            "total_results": len(results),
-            "filters_applied": {
-                "min_price": min_price,
-                "max_price": max_price,
-                "style": style,
-                "location": location,
-                "ambiance": ambiance,
-                "emotion": emotion
-            },
-            "results": results
-        }
-
+        Message court engageant (1-2 phrases) pour présenter cette oeuvre.
+        """
+        try:
+            return generate_llm_response(prompt, max_tokens=60)
+        except:
+            return "Oeuvre fascinante à découvrir!"
+    
+    # ThreadPool pour paralléliser les appels LLM
+    with ThreadPoolExecutor(max_workers=min(10, len(raw_results))) as executor:
+        individual_msgs = list(executor.map(generate_individual_msg, raw_results))
+    
+    # 3. Message GLOBAL synthétisant TOUS les résultats
+    top_contents = "\n\n---\n\n".join([
+        f"[{i+1}] {r['full_content'][:300]}..." 
+        for i, r in enumerate(raw_results[:3])  # Top 3 pour synthèse
+    ])
+    
+    global_prompt = f"""
+    Requête utilisateur: "{query}"
+    
+    Voici les {len(raw_results)} oeuvres les plus pertinentes trouvées:
+    
+    {top_contents}
+    
+    Rédige une réponse globale engageante qui:
+    1. Résume les résultats trouvés
+    2. Fait un lien avec la requête
+    3. Invite à explorer les détails
+    4. Reste sous 120 mots
+    
+    Ton: enthousiaste, expert art, assitant culturel.
+    """
+    
+    try:
+        global_msg = generate_llm_response(global_prompt, max_tokens=1200)
+    except:
+        global_msg = f"Excellents résultats pour '{query}'! {len(raw_results)} oeuvres correspondent parfaitement à vos critères. Explorez-les!"
+    
+    # 4. Assemblage final
+    results = []
+    for i, raw_result in enumerate(raw_results):
+        results.append({
+            **{k: v for k, v in raw_result.items() if k != "full_content"},
+            "msg": individual_msgs[i]
+        })
+    
+    return {
+        "query": query,
+        "total_results": len(results),
+        "global_msg": global_msg,  # 🔥 NOUVEAU: Message global
+        "filters_applied": {
+            "min_price": min_price,
+            "max_price": max_price,
+            "style": style,
+            "location": location,
+            "ambiance": ambiance,
+            "emotion": emotion
+        },
+        "results": results
+    }
+    
 
 @router.get("/similar/{artwork_id}")
 def find_similar(
