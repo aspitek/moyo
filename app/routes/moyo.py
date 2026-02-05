@@ -325,11 +325,14 @@ async def compose_3d_scene(
         Instructions: {prompt}
         """
 
-        # Générer l'image composite
+        # Générer l'image composite avec Gemini 2.0 Flash (génération d'images)
         response = await asyncio.to_thread(
             client.models.generate_content,
-            model="gemini-2.0-flash",
+            model="gemini-2.0-flash-exp",
             contents=[composition_prompt] + object_data + space_data,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE", "TEXT"]
+            ),
         )
 
         # Extraire l'image générée
