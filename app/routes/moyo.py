@@ -335,6 +335,7 @@ async def compose_3d_scene(
             ),
         )
 
+
         # Extraire l'image générée
         if not response.candidates:
             raise HTTPException(
